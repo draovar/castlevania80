@@ -18,31 +18,102 @@ function BOOT()
 end
 
 function TIC()
-	b=0
-	if btn(0) then 
-		y=y-1 
-	end
-	if btn(1) then 
-		y=y+1
-	end
-	if btnp(2,60,6) then 
-		x=x-1
-		b=1
-	end
-	if btnp(3,60,6) then 
-		x=x+1
-		b=2
-	end
-
-	if b>0 then
-		change_room(b)
-	end
-	
 	cls(0)
 	draw_room(room)
-	--draw_door(232,40)
+	handle_input()
+	draw_player()
+	chek_ext()
 end
 
+-- PLAYER --
+player={
+	x=50,
+	y=30,
+	w=2,
+	h=4
+}
+
+
+function handle_input()
+	if btn(0) then 
+		if collision("up")==false then
+			player.y=player.y-1
+		end
+	end
+	if btn(1) then 
+		if collision("down")==false then
+			player.y=player.y+1
+		end
+	end
+	if btn(2) then 
+		if collision("left")==false then
+			player.x=player.x-1
+		end
+	end
+	if btn(3) then 
+		if collision("right")==false then
+			player.x=player.x+1
+		end
+	end
+end
+
+function draw_player()
+	spr(260,player.x,player.y,0,1,0,0,player.w,player.h)
+end
+
+-- COLLISION --
+function collision(dir)
+	local x1=0
+	local y1=0
+	local x2=0
+	local y2=0
+
+	if dir=="left" then
+		x1=math.floor(player.x/8)
+		y1=math.floor((player.y+1)/8)
+		x2=math.floor(player.x/8)
+		y2=math.floor((player.y+31)/8)
+	end
+	if dir=="right" then
+		x1=math.floor((player.x+16)/8)
+		y1=math.floor((player.y+1)/8)
+		x2=math.floor((player.x+16)/8)
+		y2=math.floor((player.y+31)/8)
+	end
+	if dir=="up" then
+		x1=math.floor((player.x+1)/8)
+		y1=math.floor(player.y/8)
+		x2=math.floor((player.x+15)/8)
+		y2=math.floor(player.y/8)
+	end
+	if dir=="down" then
+		x1=math.floor((player.x+1)/8)
+		y1=math.floor((player.y+32)/8)
+		x2=math.floor((player.x+15)/8)
+		y2=math.floor((player.y+32)/8)
+	end
+
+	x1=x1+room.x	x2=x2+room.x
+	y1=y1+room.y	y2=y2+room.y
+
+	return fget(mget(x1, y1),0) or fget(mget(x2, y2),0)
+end
+
+function chek_ext()
+	local x=player.x+8
+	local y=player.y+16
+	pix(x,y,0)
+
+	for i=1,room.n_exts do
+		if x>=room.exts[i].x1 and x<=room.exts[i].x2 
+		and y>=room.exts[i].y1 and y<=room.exts[i].y2 then
+			change_room(i)
+			return
+		end
+	end
+end
+
+-- MAP --
 function draw_room(room)
 	draw_background(24,0)
 	map(room.x,room.y,room.w,room.h,0,0,0,1)
@@ -84,9 +155,11 @@ function draw_door(x,y)
 end
 
 function change_room(n)
-	if room.n_exts<n then
-		n=room.n_exts
+	if room.n_exts<n or n==0 then
+		return
 	end
+
+	local tmp_room=room
 
 	if room.exts[n].to==1 then
 		room=room1
@@ -94,6 +167,18 @@ function change_room(n)
 		room=room2
 	elseif room.exts[n].to==3 then
 		room=room3
+	end
+
+	if tmp_room.y<room.y then
+		player.y=player.y-(room.y*8)+20
+	elseif tmp_room.y>room.y then
+		player.y=player.y+(tmp_room.y*8)
+	end
+
+	if tmp_room.x<room.x then
+		player.x=player.x-(room.x*8)+20
+	elseif tmp_room.x>room.x then
+		player.x=player.x+(tmp_room.x*8)
 	end
 end
 
@@ -110,8 +195,8 @@ room1={
 	exts={
 		{
 		to=2,
-		x1=172, y1=128,
-		x2=200, y2=128,
+		x1=172, y1=136,
+		x2=200, y2=136,
 		decor=0
 		}
 	}
@@ -134,8 +219,8 @@ room2={
 		},
 		{
 		to=3,
-		x1=232, y1=40,
-		x2=232, y2=96,
+		x1=240, y1=40,
+		x2=240, y2=96,
 		decor=1
 		}
 	}
@@ -152,8 +237,8 @@ room3={
 	exts={
 		{
 		to=2,
-		x1=172, y1=0,
-		x2=200, y2=0,
+		x1=0, y1=40,
+		x2=0, y2=96,
 		decor=0
 		}
 	}
@@ -165,6 +250,8 @@ room3={
 -- 035:cccccccaaa99aada8888c9da888889dac8c8c8da8ccc89daeeeeeecaaaaaaaaa
 -- 036:cccccccccaa99aa9ca988888c9888988ca989898d9a9aaa9ceeeeeeeaaaa99aa
 -- 037:add8ecef9dccedef9dd8edef9dccedef9dd8edef9dccfdefffffffffdddeeeee
+-- 045:000000000000000f000000f400000f55000000f5000000ff0000ff88000f2898
+-- 046:00000000ff00000044f0000045f000002af000009af0000011f000002acf0000
 -- 047:000fffff000fbbbf000fcccf000fcdcf000fdedf000fdedf000fcdcf000fcdcf
 -- 048:fece8ddafedeccd9fede8dd9fedeccd9fede8dd9fedfccd9fffffffffeeeeddd
 -- 049:ccccccccd9988998d98cccccd8ccc8ccd98c8c8cd8989998deeeeeeeffffffff
@@ -172,16 +259,22 @@ room3={
 -- 051:ccccccccd9988998d98cccccd8ccc8ccd98c8c8cd8989998deeeeeeeaaaa99aa
 -- 052:cccccccc989899ddcccc89ddccccc9dd8c8c98dd88998cddeeeeeedc99888999
 -- 053:ddddeeefa98cdddfa8cdeeef9cdededf9cedeeefa8dededfffffffff8ccdfdef
+-- 061:00f1288200f122820f66f2220f45f111f9c4f222f89c4f460ffccf22000fffcc
+-- 062:3366f0003633f000f633f000f3acf0002f3af00065abaf0021faacf0c11fa3bf
 -- 063:000fcdcf000fcdcf000fcdcf000fcdcf000fcdcf000fcdcf000fcdcf000fcdcf
 -- 064:ffffffffd8aaaaaaec8a9889e89a8988e9aaa999ceeeeeee8cdcdddd98c88ccc
 -- 065:ffffffffaaaaaaaa989899aa8989989a9888999aeeeeeeeeddddddddcccccccc
 -- 066:ffffffffaaaaaaaaaa998989a9899898a9998889eeeeeeeeddddddddcccccccc
 -- 067:ff000000aaee000099aaee008899aafe998899aa99998899ee998888edee9988
 -- 068:00000000000000000000000000000000fe000000aafe000099aafe008899aafe
+-- 077:0000f2880000f2880000f2880000f28a000f22a2000f29f5000f9f1200f9f11c
+-- 078:92f0f89fa2f00ff0af1f00005f2f00004f12f0004f12f0002f111f00bf11cf00
 -- 079:000fcdcf000fcdcf000fcdcf000fcdcf000fcdcf000fcdcf000fcdcf000fcdcf
 -- 083:ccddeeaaaa99ddee8888c9ed888889ecc8c8c8d98ccc89daeeeeeecaaaaaaaaa
 -- 084:99cc9aaaaa99cc9aeeaa99ccedeeaaaae8ddeeaad888ddeedeeeeeffaaaa99aa
 -- 085:ffffffffaaaaaa8d9889a8ce8898a98e999aaa9eeeeeeeecddddcdc8ccc88c89
+-- 093:00ff13c300ff3cb300f3c33f00f2bcf50f3ccf54f52bfffffc34f0000f4bcf00
+-- 094:3f133f001f13cf005f3cf0004f33f000ff3cf0000f2cf0000f123f000f43ccf0
 -- 095:000fcdcf000fcdcf000fdedf000fbcbf000fefef000feeef000fefef000feeef
 -- 096:ccccccccd9988998d98cccccd8ccc8ccd98c8c8cd8989998deeeeeeeffffffff
 -- 097:cccccccaaa99aada8888c9da888889dac8c8c8d98ccc89d8eeeeeedcffffffff
@@ -329,6 +422,25 @@ room3={
 -- 255:2fffffff3f122221321333322313333212323333112123332111233232111222
 -- </TILES>
 
+-- <SPRITES>
+-- 000:000000000000000f000000f000000f00000000f0000000ff0000ff00000f0000
+-- 001:00000000ff00000000f0000000f0000000f0000000f0000000f00000000f0000
+-- 004:000000000000000f000000f400000f55000000f5000000ff0000ff88000f2898
+-- 005:00000000ff00000044f0000045f000002af000009af0000011f000002acf0000
+-- 016:00f0000000f000000f00f0000f00f000f000f000f0000f000ff00f00000fff00
+-- 017:0000f0000000f000f000f000f000f0000f00f00000000f0000f000f0000f000f
+-- 020:00f1288200f122820f66f2220f45f111f9c4f222f89c4f460ffccf22000fffcc
+-- 021:3366f0003633f000f633f000f3acf0002f3af00065abaf0021faacf0c11fa3bf
+-- 032:0000f0000000f0000000f0000000f000000f0000000f0000000f000000f00000
+-- 033:00f0f00f00f00ff00f0f00000f0f00000f00f0000f00f0000f000f000f000f00
+-- 036:0000f2880000f2880000f2880000f28a000f22a2000f29f5000f9f1200f9f11c
+-- 037:92f0f89fa2f00ff0af1f00005f2f00004f12f0004f12f0002f111f00bf11cf00
+-- 048:00f0000000f0000000f0000f00f000f00f000f00f000fffff000f0000f000f00
+-- 049:0f000f000f000f000f00f0000f00f000ff00f0000f00f0000f000f000f0000f0
+-- 052:00ff13c300ff3cb300f3c33f00f2bcf50f3ccf54f52bfffffc34f0000f4bcf00
+-- 053:3f133f001f13cf005f3cf0004f33f000ff3cf0000f2cf0000f123f000f43ccf0
+-- </SPRITES>
+
 -- <MAP>
 -- 000:0212223206162636061626360616263606162636061626360616223242528898a8b88898a8b88898a8b88898a8b88898a8b88898a8b88898a8b88898000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 -- 001:0313435300000000000000000000000000000000000000000000021343538999a9b98999a9b98999a9b98999a9b98999a9b98999a9b98999a9b98999000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -379,6 +491,10 @@ room3={
 -- <TRACKS>
 -- 000:100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 -- </TRACKS>
+
+-- <FLAGS>
+-- 000:00000000000000000000000000000000000000000000000000000000000000001010101010100000000000000000000010101010101000000000000000000000101010101010000000000000000000001010101010100000000000000000000010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+-- </FLAGS>
 
 -- <PALETTE>
 -- 000:1c95000030201040304c69554048242c3410182418041820a1a171b2b289c2c2aeffffff798979595959383840000000
