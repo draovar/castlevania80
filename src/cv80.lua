@@ -6,15 +6,15 @@
 -- version: 0.1
 -- script:  lua
 
-t=0
-x=96
-y=24
-flag=0
+-- GLOBAL VARIABLES --
+SCR_H=136 -- screen height
+SCR_W=240 -- screen width
 
-room=nil
+room=nil -- curren room
 
+-- TIC --
 function BOOT()
-	room=room4
+	room=room1
 end
 
 function TIC()
@@ -37,26 +37,25 @@ player={
 	f=0
 }
 
-
 function handle_input()
 	if btn(0) then 
-		if collision("up")==false then
+		if collision("up", 0)==false then
 			player.y=player.y-1
 		end
 	end
 	if btn(1) then 
-		if collision("down")==false then
+		if collision("down", 0)==false then
 			player.y=player.y+1
 		end
 	end
 	if btn(2) then 
-		if collision("left")==false then
+		if collision("left", 0)==false then
 			player.x=player.x-1
 			player.f=1
 		end
 	end
 	if btn(3) then 
-		if collision("right")==false then
+		if collision("right", 0)==false then
 			player.x=player.x+1
 			player.f=0
 		end
@@ -68,7 +67,7 @@ function draw_player()
 end
 
 -- COLLISION --
-function collision(dir)
+function collision(dir,flag)
 	local x1=0
 	local y1=0
 	local x2=0
@@ -102,7 +101,7 @@ function collision(dir)
 	x1=x1+room.x	x2=x2+room.x
 	y1=y1+room.y	y2=y2+room.y
 
-	return fget(mget(x1, y1),0) or fget(mget(x2, y2),0)
+	return fget(mget(x1, y1),flag) or fget(mget(x2, y2),flag)
 end
 
 function chek_ext()
@@ -134,14 +133,14 @@ function move_camera()
 	
 	if camera.x<0 then
 		camera.x=0
-	elseif camera.x>room.w*8-240 then
-		camera.x=room.w*8-240
+	elseif camera.x>room.w*8-SCR_W then
+		camera.x=room.w*8-SCR_W
 	end
 
 	if camera.y<0 then
 		camera.y=0
-	elseif camera.y>room.h*8-136 then
-		camera.y=room.h*8-136
+	elseif camera.y>room.h*8-SCR_H then
+		camera.y=room.h*8-SCR_H
 	end
 
 end
@@ -186,13 +185,13 @@ function draw_door(x,y)
 	local tmp_x=x
 	local tmp_y=y
 
-	if x==240 then
-		tmp_x=240-8
+	if x==SCR_W then
+		tmp_x=SCR_W-8
 	elseif x==0 then
 		tmp_x=-3
 	end
 	if y==0 then
-		tmp_y=136-8
+		tmp_y=SCR_H-8
 	end
 
 	tmp_x=tmp_x-camera.x
@@ -213,19 +212,17 @@ function change_room(n)
 	player.x=player.x-x_offset
 	player.y=player.y-y_offset
 
-	if player.x<0 and x_offset~=0 then
-		player.x=player.x+1
-	elseif player.x>0 and x_offset~=0 then
+	if room.exts[n].x1==0 then
 		player.x=player.x-1
+	elseif room.exts[n].x1==SCR_W then
+		player.x=player.x+1
 	end
 
-	if player.y<0 and y_offset~=0 then
-		player.y=player.y+1
-	elseif player.y>0 and y_offset~=0 then
+	if room.exts[n].y1==0 then
 		player.y=player.y-1
+	elseif room.exts[n].y1==SCR_H then
+		player.y=player.y+1
 	end
-
-	local tmp_room=room
 
 	if room.exts[n].to==1 then
 		room=room1
@@ -327,7 +324,7 @@ room3={
 	}
 }
 
-room4={
+room_test={
 	x=0,
 	y=51,
 	w=30,
