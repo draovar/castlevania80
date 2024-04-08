@@ -6,10 +6,12 @@
 -- version: 0.1
 -- script:  lua
 
--- GLOBAL VARIABLES --
+-- GLOBAL CONSTANTS --
 SCR_H=136 -- screen height
 SCR_W=240 -- screen width
+GRAVITY=0.2
 
+-- GLOBAL VARIABLES --
 room=nil -- curren room
 
 -- TIC --
@@ -21,6 +23,8 @@ function TIC()
 	cls(0)
 	draw_room(room)
 	handle_input()
+	handle_collision()
+	move_player()
 	draw_player()
 	chek_ext()
 	move_camera()
@@ -34,31 +38,103 @@ player={
 	y=30,
 	w=2,
 	h=4,
-	f=0
+	dy=0,
+	dx=0,
+	max_dx=2,
+	max_dy=4,
+	f=0,
+	max_x=SCR_W,
+	max_y=SCR_H,
+	min_x=0,
+	min_y=0
 }
 
-function handle_input()
-	if btn(0) then 
-		if collision("up", 0)==false then
-			player.y=player.y-1
+function move_player()
+
+	if player.dx>player.max_dx then
+		player.dx=player.max_dx
+	elseif player.dx<-player.max_dx then
+		player.dx=-player.max_dx
+	end
+
+	if player.dy>player.max_dy then
+		player.dy=player.max_dy
+	elseif player.dy<-player.max_dy then
+		player.dy=-player.max_dy
+	end
+
+	player.y=player.y+player.dy
+	player.x=player.x+player.dx
+
+	if player.x>player.max_x then
+		player.x=player.max_x
+	elseif player.x<player.min_x then
+		player.x=player.min_x
+	end
+
+	if player.y>player.max_y then
+		player.y=player.max_y
+	elseif player.y<player.min_y then
+		player.y=player.min_y
+	end
+
+	player.max_x=1024
+	player.max_y=1024
+	player.min_x=-1024
+	player.min_y=-1024
+
+	player.dx=0
+	--player.dy=0
+end
+
+function handle_collision()
+	if collision("up",0)==true then
+		player.min_y=math.ceil(player.y/8)*8
+		if player.dy<0 then
+			player.dy=0
 		end
+	end
+	if collision("down",0)==true then
+		player.max_y=math.floor(player.y/8)*8
+		if player.dy>0 then
+			player.dy=0
+		end
+	elseif collision("down",1)==true then
+		if player.dy>0 then
+			player.dy=0
+		end
+	else
+		player.dy=player.dy+GRAVITY
+	end
+	if collision("left",0)==true then
+		player.min_x=math.ceil(player.x/8)*8
+		if player.dx<0 then
+			player.dx=0
+		end
+	end
+	if collision("right",0)==true then
+		player.max_x=math.floor(player.x/8)*8
+		if player.dx>0 then
+			player.dx=0
+		end
+	end
+end
+
+function handle_input()
+	if btnp(0,6,60) then 
+		--player.dy=player.dy-3
+		player.dy=-3
 	end
 	if btn(1) then 
-		if collision("down", 0)==false then
-			player.y=player.y+1
-		end
+		player.dy=player.dy+1
 	end
 	if btn(2) then 
-		if collision("left", 0)==false then
-			player.x=player.x-1
-			player.f=1
-		end
+		player.dx=player.dx-1
+		player.f=1
 	end
 	if btn(3) then 
-		if collision("right", 0)==false then
-			player.x=player.x+1
-			player.f=0
-		end
+		player.dx=player.dx+1
+		player.f=0
 	end
 end
 
@@ -74,32 +150,34 @@ function collision(dir,flag)
 	local y2=0
 
 	if dir=="left" then
-		x1=math.floor(player.x/8)
-		y1=math.floor((player.y+1)/8)
-		x2=math.floor(player.x/8)
-		y2=math.floor((player.y+31)/8)
+		x1=math.floor((player.x)/8)
+		y1=math.floor((player.y+2)/8)
+		x2=math.floor((player.x-1)/8)
+		y2=math.floor((player.y+30)/8)
 	end
 	if dir=="right" then
 		x1=math.floor((player.x+16)/8)
-		y1=math.floor((player.y+1)/8)
+		y1=math.floor((player.y+2)/8)
 		x2=math.floor((player.x+16)/8)
-		y2=math.floor((player.y+31)/8)
+		y2=math.floor((player.y+30)/8)
 	end
 	if dir=="up" then
-		x1=math.floor((player.x+1)/8)
-		y1=math.floor(player.y/8)
-		x2=math.floor((player.x+15)/8)
-		y2=math.floor(player.y/8)
+		x1=math.floor((player.x+2)/8)
+		y1=math.floor((player.y-1)/8)
+		x2=math.floor((player.x+14)/8)
+		y2=math.floor((player.y-1)/8)
 	end
 	if dir=="down" then
-		x1=math.floor((player.x+1)/8)
+		x1=math.floor((player.x+2)/8)
 		y1=math.floor((player.y+32)/8)
-		x2=math.floor((player.x+15)/8)
+		x2=math.floor((player.x+14)/8)
 		y2=math.floor((player.y+32)/8)
 	end
 
 	x1=x1+room.x	x2=x2+room.x
 	y1=y1+room.y	y2=y2+room.y
+
+	pix(x1*8,y1*8,0)
 
 	return fget(mget(x1, y1),flag) or fget(mget(x2, y2),flag)
 end
@@ -110,8 +188,9 @@ function chek_ext()
 	pix(x,y,0)
 
 	for i=1,room.n_exts do
-		if x>=room.exts[i].x1-camera.x and x<=room.exts[i].x2-camera.x
-		and y>=room.exts[i].y1-camera.y and y<=room.exts[i].y2-camera.y then
+
+		if is_between(x,room.exts[i].x1-camera.x,room.exts[i].x2-camera.x,0) and
+		is_between(y,room.exts[i].y1-camera.y,room.exts[i].y2-camera.y,0) then
 			change_room(i)
 			return
 		end
@@ -236,6 +315,18 @@ end
 
 -- OTHERS --
 
+function is_between(x,a,b, off)
+	local max=math.max(a,b)
+	local min=math.min(a,b)
+
+	if x>=min-off and x<=max+off then
+		return true
+	else
+		return false
+	end
+
+end
+
 --sets the palette indice i to specified rgb
 --or return the colors if no rgb values are declared.
 function pal(i,r,g,b)
@@ -271,8 +362,8 @@ room1={
 	exts={
 		{
 		to=2,
-		x1=172, y1=136,
-		x2=200, y2=136,
+		x1=172, y1=137,
+		x2=200, y2=142,
 		xr=172,	yr=0,
 		decor=0
 		}
@@ -290,15 +381,15 @@ room2={
 	exts={
 		{
 		to=1,
-		x1=172, y1=0,
-		x2=200, y2=0,
+		x1=172, y1=-6,
+		x2=200, y2=-1,
 		xr=172,	yr=136,
 		decor=0
 		},
 		{
 		to=3,
-		x1=240, y1=40,
-		x2=240, y2=96,
+		x1=241, y1=40,
+		x2=243, y2=96,
 		xr=0,	yr=176,
 		decor=1
 		}
@@ -316,9 +407,9 @@ room3={
 	exts={
 		{
 		to=2,
-		x1=0, y1=176,
-		x2=0, y2=232,
-		xr=240,	yr=40,
+		x1=-3, y1=176,
+		x2=-1, y2=232,
+		xr=238,	yr=40,
 		decor=1
 		}
 	}
@@ -616,7 +707,7 @@ room_test={
 -- </TRACKS>
 
 -- <FLAGS>
--- 000:00000000000000000000000000000000000000000000000000000000000000001010101010100000000000000000000010101010101000000000000000000000101010100010000000000000000000001010101010100000000000000000000010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+-- 000:00000000000000000000000000000000000000000000000000000000000000001010101010100000000000000000000010101010101000000000000000000000101010100010000000000000000000001010101010100000000000000000000010101010101000000000002020202020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 -- </FLAGS>
 
 -- <PALETTE>
